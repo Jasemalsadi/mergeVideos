@@ -34,14 +34,15 @@ def main():
     parser = OptionParser(usage="usage: %prog [options], version=%prog 1.0")
 
     parser.add_option("-s", "--source", action="store", type="string", dest="source_videos_path", default=False,
-                      help="Path to the Videos folder (without recursivity)  ")
+                      help="Path to the Videos folder (without recursively)  ")
 
     parser.add_option("-d", "--destination", action="store", type="string", dest="destination_video_path",
                       default=False,
                       help="Destination path to save the folder")
 
     (options, args) = parser.parse_args()
-    if len(vars(options)) != 2:
+    print(len(vars(options)) != 2)
+    if len(vars(options)) != 2 or not options.source_videos_path or not options.destination_video_path:
         parser.print_help()
         sys.exit()
     sourcDir = options.source_videos_path.replace("\\", "")
