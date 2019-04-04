@@ -2,6 +2,7 @@ from moviepy.editor import VideoFileClip, concatenate_videoclips
 import sys
 import os
 import threading
+import multiprocessing
 
 from optparse import OptionParser
 
@@ -14,7 +15,6 @@ def save_files(major_version, selected_videos, sourcDir, saveDir):
         sourcDir += "/"
     if not saveDir.endswith("/"):
         saveDir += "/"
-    cmd = ["ffmpeg"]
     clips = []
     for video in selected_videos:
         video_path = sourcDir + video
@@ -23,9 +23,9 @@ def save_files(major_version, selected_videos, sourcDir, saveDir):
     final_clip = concatenate_videoclips(clips)
     output_file = saveDir + str(major_version) + ".0.webm"
     print("Saving " + output_file + "... \n")
-
-    final_clip.write_videofile(output_file, threads=4, logger=None)
-
+    numbeOfThreads = 100 if len(selected_videos) > 100 else len(selected_videos)
+    final_clip.write_videofile(output_file, codec="libvpx", threads=numbeOfThreads)
+    # ffmpeg_params=["-safe", "0", "-c", "copy"]
     pass
 
 
@@ -41,7 +41,6 @@ def main():
                       help="Destination path to save the folder")
 
     (options, args) = parser.parse_args()
-    print(len(vars(options)) != 2)
     if len(vars(options)) != 2 or not options.source_videos_path or not options.destination_video_path:
         parser.print_help()
         sys.exit()
@@ -69,21 +68,26 @@ def main():
     fist_major_version = get_major_version(0, onlyfiles)
     last_major_version = get_major_version(-1, onlyfiles)
     print("Begin Merging Videos")
-    threads = []
-    for major_version in range(fist_major_version, last_major_version + 1):
+    processes = []
+    for current_major_version in range(fist_major_version, last_major_version + 1):
         # Group version videos
         selected_videos = list(
-            filter(lambda v: int(v.split('.webm')[0].split('.')[0]) == fist_major_version, onlyfiles))
+            filter(lambda v: int(v.split('.webm')[0].split('.')[0]) == current_major_version, onlyfiles))
         # Save them
-        thread = threading.Thread(target=save_files, args=[major_version, selected_videos, sourcDir, saveDir])
-        thread.start()
-        threads.append(thread)
+        p = multiprocessing.Process(name="merge_videos_" + str(current_major_version), target=save_files,
+                                    args=[current_major_version, selected_videos, sourcDir, saveDir])
 
-    print("ًWaiting threads to complete saving, it will take time .. ")
+        processes.append(p)
+        p.start()
 
-    for t1 in threads:
+    print("ًWaiting processes to complete saving, it will take time and memory .. ")
+
+    for t1 in processes:
         t1.join()
-    print("Done ! ")
+    print("------------Done !-------------- ")
+
+    # for t1 in processes:
+    #     t1.close()
 
 
 def get_major_version(index, onlyfiles):
