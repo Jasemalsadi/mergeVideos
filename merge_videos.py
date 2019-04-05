@@ -86,8 +86,8 @@ def main():
         t1.join()
     print("------------Done !-------------- ")
 
-    # for t1 in processes:
-    #     t1.close()
+    for t1 in processes:
+        t1.close()
 
 
 def get_major_version(index, onlyfiles):
