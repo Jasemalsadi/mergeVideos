@@ -1,35 +1,73 @@
-from moviepy.editor import VideoFileClip, concatenate_videoclips
+import subprocess
+
 import sys
 import os
-import threading
 import multiprocessing
-
 from optparse import OptionParser
+import re
 
 print("\nMerge webm  Videos based on Major version X.something.something")
 sorted_vids = []
 
 
-def save_files(major_version, selected_videos, sourcDir, saveDir):
+def save_files(major_version, selected_videos, sourcDir, saveDir, extension_=0):
+    extension = "." + str(extension_) if extension_ else ""
     if not sourcDir.endswith("/"):
         sourcDir += "/"
     if not saveDir.endswith("/"):
         saveDir += "/"
-    clips = []
+    videos_to_be_merged_str = ""
+    selected_videos_path = []
+    i = 0
     for video in selected_videos:
         video_path = sourcDir + video
-        clips.append(VideoFileClip(video_path))
+        selected_videos_path.append(video_path)
+        if i == 0:
+            videos_to_be_merged_str += add_qoutes(video_path)
+        else:
+            videos_to_be_merged_str += " + " + add_qoutes(video_path)
+        i += 1
 
-    final_clip = concatenate_videoclips(clips)
-    output_file = saveDir + str(major_version) + ".0.webm"
-    print("Saving " + output_file + "... \n")
-    numbeOfThreads = 100 if len(selected_videos) > 100 else len(selected_videos)
-    final_clip.write_videofile(output_file, codec="libvpx", threads=numbeOfThreads)
-    # ffmpeg_params=["-safe", "0", "-c", "copy"]
-    pass
+    output_file = saveDir + str(major_version) + extension + ".0.webm"
+    print("Before saving file  " + str(major_version) + extension + ".0.webm" "\n")
+    command_to_be_executed = " mkvmerge -o " + add_qoutes(
+        output_file) + "  -w  " + videos_to_be_merged_str + " --quiet  "
+    # --quiet
+    output = 0
+    sterr = ""
+    p = subprocess.Popen([command_to_be_executed], shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE)
+    output, err = p.communicate(b"input data that is passed to subprocess' stdin")
+
+    if not p.returncode:
+        print("Saving  " + str(major_version) + extension + ".0.webm" + " Done ! \n ")
+        return
+    print(f"Error in saving the file {major_version}.0.webm maybe encoding issue, so we need to re-encode it \n")
+    video_of_error = (re.findall(rb"('[^']*\.webm')+", output)[-2]).decode("utf-8").replace("'", "")
+    # [^']* match anything except ' with zero or more
+    # \. escape .
+    if video_of_error in selected_videos_path:
+        index_of_video_error = selected_videos_path.index(video_of_error)
+        first_arr = selected_videos[0:index_of_video_error]
+        last_arr = selected_videos[index_of_video_error:]
+        save_files(major_version, first_arr, sourcDir, saveDir, extension_=extension_ + 1)
+        save_files(major_version, last_arr, sourcDir, saveDir, extension_=extension_ + 2)
+        #  merge from 0 to video_of_error-1
+    # + merge from video_of_error + 1 to end
+    # keep the video of issue as it's to save it
+
+
+def add_qoutes(str):
+    return '"' + str + '"'
 
 
 def main():
+    if (sys.version_info < (3, 0)):
+        print("U need to run the code in python 3 ")
+        sys.exit()
+    if (not is_tool("mkvmerge")):
+        print("U need to install mkvmerge on the terminal ")
+        sys.exit()
     # parse command line
     parser = OptionParser(usage="usage: %prog [options], version=%prog 1.0")
 
@@ -44,8 +82,8 @@ def main():
     if len(vars(options)) != 2 or not options.source_videos_path or not options.destination_video_path:
         parser.print_help()
         sys.exit()
-    sourcDir = options.source_videos_path.replace("\\", "")
-    saveDir = options.destination_video_path
+    sourcDir = options.source_videos_path.replace("\\", "").strip()
+    saveDir = options.destination_video_path.strip()
     # 1. List all embb files there
     # print(os.listdir(sourcDir))
     onlyfiles = []
@@ -92,6 +130,15 @@ def main():
 
 def get_major_version(index, onlyfiles):
     return int(onlyfiles[index].split(".webm")[0].split('.')[0])
+
+
+def is_tool(name):
+    """Check whether `name` is on PATH and marked as executable."""
+
+    # from whichcraft import which
+    from shutil import which
+
+    return which(name) is not None
 
 
 main()
