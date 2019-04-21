@@ -29,7 +29,7 @@ def save_files(major_version, selected_videos, sourcDir, saveDir, extension_=0):
         i += 1
 
     output_file = saveDir + str(major_version) + extension + ".0.webm"
-    print("Before saving file  " + str(major_version) + extension + ".0.webm" "\n")
+    #print("Before saving file  " + str(major_version) + extension + ".0.webm" "\n")
     command_to_be_executed = " mkvmerge -o " + add_qoutes(
         output_file) + "  -w  " + videos_to_be_merged_str + " --quiet  "
     # --quiet
@@ -42,7 +42,8 @@ def save_files(major_version, selected_videos, sourcDir, saveDir, extension_=0):
     if not p.returncode:
         print("Saving  " + str(major_version) + extension + ".0.webm" + " Done ! \n ")
         return
-    print(f"Error in saving the file {major_version}.0.webm maybe encoding issue, so we need to re-encode it \n")
+    print(
+        f"Error in saving the file {major_version}{extension}.0.webm maybe encoding issue, so we need to re-encode it \n")
     video_of_error = (re.findall(rb"('[^']*\.webm')+", output)[-2]).decode("utf-8").replace("'", "")
     # [^']* match anything except ' with zero or more
     # \. escape .
@@ -50,6 +51,7 @@ def save_files(major_version, selected_videos, sourcDir, saveDir, extension_=0):
         index_of_video_error = selected_videos_path.index(video_of_error)
         first_arr = selected_videos[0:index_of_video_error]
         last_arr = selected_videos[index_of_video_error:]
+        if (extension_ >= 1): extension_ -= 1
         save_files(major_version, first_arr, sourcDir, saveDir, extension_=extension_ + 1)
         save_files(major_version, last_arr, sourcDir, saveDir, extension_=extension_ + 2)
         #  merge from 0 to video_of_error-1
