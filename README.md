@@ -3,17 +3,24 @@ Merge webm  Videos based on Major version X.something.something
 ## Prerequisites
 ```
 Python 3
-moviepy
 OptionParser
+mkvmerge
 ```
 ## Install
 
 ```bash
-$ pip install mergeVideos
+$ pip3 install -r requirements.txt
+$ sudo apt install mkvtoolnix
 ```
 ## Attributes 
 ```
 -s : Path to the Videos folder (without recursively)  with double quoutes 
 -p : Destination path to save the folder with double quoutes
 ```
-Note: It will takes time and CPU because It needs to re-encode each video again. 
+
+
+## Example 
+```bash
+$ python3 merge_videos.py -s "/Users/Jasem/Desktop/videos" -d "/Users/Jasem/Desktop/merged"
+```
+Note: Videos that contain different tracks ID won't be merge. Also it doesn't support recursive folders currently. 
