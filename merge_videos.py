@@ -10,17 +10,15 @@ print("\nMerge webm  Videos based on Major version X.something.something")
 sorted_vids = []
 
 
-def save_files(major_version, selected_videos, sourcDir, saveDir, extension_=0):
+def save_files(major_version, selected_videos, saveDir, extension_=0):
     extension = "." + str(extension_) if extension_ else ""
-    if not sourcDir.endswith("/"):
-        sourcDir += "/"
     if not saveDir.endswith("/"):
         saveDir += "/"
     videos_to_be_merged_str = ""
     selected_videos_path = []
     i = 0
     for video in selected_videos:
-        video_path = sourcDir + video
+        video_path = video["path"]
         selected_videos_path.append(video_path)
         if i == 0:
             videos_to_be_merged_str += add_qoutes(video_path)
@@ -52,8 +50,8 @@ def save_files(major_version, selected_videos, sourcDir, saveDir, extension_=0):
         first_arr = selected_videos[0:index_of_video_error]
         last_arr = selected_videos[index_of_video_error:]
         if (extension_ >= 1): extension_ -= 1
-        save_files(major_version, first_arr, sourcDir, saveDir, extension_=extension_ + 1)
-        save_files(major_version, last_arr, sourcDir, saveDir, extension_=extension_ + 2)
+        save_files(major_version, first_arr, saveDir, extension_=extension_ + 1)
+        save_files(major_version, last_arr, saveDir, extension_=extension_ + 2)
         #  merge from 0 to video_of_error-1
     # + merge from video_of_error + 1 to end
     # keep the video of issue as it's to save it
@@ -90,10 +88,15 @@ def main():
     # print(os.listdir(sourcDir))
     onlyfiles = []
     try:
-        onlyfiles = [f for f in os.listdir(sourcDir) if
-                     os.path.isfile(os.path.join(sourcDir, f)) and os.path.join(sourcDir, f).endswith(tuple([
-                         ".WEBM", ".webm"
-                     ]))]
+        # recursively iterating over all files
+        for dp, dn, fn in os.walk(os.path.expanduser(sourcDir)):
+            for f in fn:
+                file = os.path.join(dp, f)
+                if file.endswith(tuple([".WEBM", ".webm"])):
+                    onlyfiles.append({
+                        "file_name": os.path.basename(file),
+                        "path": file,
+                    })
     except Exception as e:
         print(e)
         exit(1)
@@ -103,7 +106,8 @@ def main():
         exit(0)
         # print("The .web files :" + "".join(onlyfiles))
         # 2. sort the videos
-    onlyfiles.sort(key=lambda val: list(map(int, val.split('.webm')[0].split('.'))))
+    onlyfiles.sort(
+        key=lambda val: list(map(int, re.split('.webm', val["file_name"], flags=re.IGNORECASE)[0].split('.'))))
     # 3. save each major in the saveDir (1.x.x)
     fist_major_version = get_major_version(0, onlyfiles)
     last_major_version = get_major_version(-1, onlyfiles)
@@ -112,10 +116,12 @@ def main():
     for current_major_version in range(fist_major_version, last_major_version + 1):
         # Group version videos
         selected_videos = list(
-            filter(lambda v: int(v.split('.webm')[0].split('.')[0]) == current_major_version, onlyfiles))
+            filter(lambda v: int(
+                re.split('.webm', v["file_name"], flags=re.IGNORECASE)[0].split('.')[0]) == current_major_version,
+                   onlyfiles))
         # Save them
         p = multiprocessing.Process(name="merge_videos_" + str(current_major_version), target=save_files,
-                                    args=[current_major_version, selected_videos, sourcDir, saveDir])
+                                    args=[current_major_version, selected_videos, saveDir])
 
         processes.append(p)
         p.start()
@@ -131,7 +137,7 @@ def main():
 
 
 def get_major_version(index, onlyfiles):
-    return int(onlyfiles[index].split(".webm")[0].split('.')[0])
+    return int(re.split(".webm", onlyfiles[index]["file_name"], flags=re.IGNORECASE)[0].split('.')[0])
 
 
 def is_tool(name):
